@@ -1448,14 +1448,15 @@ ErrorCode DeltaPerformer::ValidateManifest() {
     }
   }
 
-  if (hardware_->IsOfficialBuild() && manifest_.max_timestamp() < hardware_->GetBuildTimestamp()) {
+  /*
+  if (manifest_.max_timestamp() < hardware_->GetBuildTimestamp()) {
     LOG(ERROR) << "The current OS build timestamp ("
                << hardware_->GetBuildTimestamp()
                << ") is newer than the maximum timestamp in the manifest ("
                << manifest_.max_timestamp() << ")";
     return ErrorCode::kPayloadTimestampError;
   }
-
+*/
   // TODO(garnold) we should be adding more and more manifest checks, such as
   // partition boundaries etc (see chromium-os:37661).
 
