@@ -52,7 +52,27 @@ cc_defaults {
         "-Wnon-virtual-dtor",
         "-fno-strict-aliasing",
     ],
-    include_dirs: ["system"],
+    include_dirs: [
+        "external/cros/system_api/dbus",
+        "system",
+        "external/selinux/libselinux/include",
+        "system/core/fs_mgr/include",
+        "system/core/fs_mgr/include_fstab",
+        "system/core/fs_mgr/liblp/include",
+        "system/core/fs_mgr/libdm/include",
+        "system/core/libprocessgroup/include",
+        "bootable/recovery",
+        "bootable/recovery/bootloader_message/include",
+        "system/extras/libfec/include",
+        "system/extras/verity/include",
+        "system/core/libcrypto_utils/include",
+        "external/fec",
+        "external/selinux/libselinux/include",
+        "external/selinux/libsepol/include",
+        "system/core/libbinderwrapper/include",
+        "hardware/interfaces/boot/1.0",
+      ],
+
     local_include_dirs: ["client_library/include"],
     static_libs: ["libgtest_prod"],
     shared_libs: [
@@ -90,7 +110,6 @@ cc_defaults {
 // Protobufs.
 cc_defaults {
     name: "update_metadata-protos_exports",
-
     shared_libs: ["libprotobuf-cpp-lite"],
 }
 
@@ -125,10 +144,15 @@ cc_defaults {
         "libbrotli",
         "libfec_rs",
         "libpuffpatch",
+        "libselinux",
         "libverity_tree",
     ],
     shared_libs: [
         "libbase",
+        "libfec_rs",
+        "libcrypto_utils",
+        "libcrypto",
+        "libutils",
         "libcrypto",
         "libfec",
     ],
@@ -231,6 +255,14 @@ cc_defaults {
 
     static_libs: [
         "libpayload_consumer",
+        "libbootloader_message",
+        "libfs_avb",
+        "libfstab",
+        "libfec_rs",
+        "libsetcpu",
+        "libfs_mgr",
+        "libbase",
+        "liblog",
         "libupdate_engine_boot_control",
     ],
     shared_libs: [
@@ -256,10 +288,6 @@ cc_library_static {
         "libupdate_engine_android_exports",
     ],
 
-    // TODO(deymo): Remove external/cros/system_api/dbus once the strings are moved
-    // out of the DBus interface.
-    include_dirs: ["external/cros/system_api/dbus"],
-
     aidl: {
         local_include_dirs: ["binder_bindings"],
         export_aidl_headers: true,
@@ -276,9 +304,11 @@ cc_library_static {
         "metrics_reporter_android.cc",
         "metrics_utils.cc",
         "network_selector_android.cc",
+        "common/proxy_resolver.cc",
         "update_attempter_android.cc",
         "update_boot_flags_action.cc",
         "update_status_utils.cc",
+        "utils_android.cc",
     ],
 }
 
@@ -306,20 +336,28 @@ cc_binary {
 // recovery image.
 cc_binary {
     name: "update_engine_sideload",
+    static_executable: true,
     defaults: [
         "ue_defaults",
         "update_metadata-protos_exports",
         "libupdate_engine_boot_control_exports",
         "libpayload_consumer_exports",
     ],
-    recovery: true,
+    cflags: [
+        "-Wall",
+        "-Wextra",
+        "-Wno-unused-parameter",
+        "-Wno-unused-function",
+        "-Werror",
+        "-D_UE_SIDELOAD",
+    ],
+      recovery: true,
 
-    cflags: ["-D_UE_SIDELOAD"],
     // TODO(deymo): Remove external/cros/system_api/dbus once the strings are moved
     // out of the DBus interface.
-    include_dirs: ["external/cros/system_api/dbus"],
 
     srcs: [
+        "boot_control_android.cc",
         "hardware_android.cc",
         "metrics_reporter_stub.cc",
         "metrics_utils.cc",
@@ -335,13 +373,18 @@ cc_binary {
     // that we explicitly request their recovery variants, so that the expected files
     // will be used and installed.
     shared_libs: [
+        "libfs_mgr",
         "libbase",
+        "libutils",
         "liblog",
     ],
     static_libs: [
         "libpayload_consumer",
         "libupdate_engine_boot_control",
         "update_metadata-protos",
+        "libselinux",
+        "libsetcpu",
+        "libcutils",
 
         // We add the static versions of the shared libraries that are not installed to
         // recovery image due to size concerns. Need to include all the static library
@@ -373,7 +416,6 @@ cc_binary {
 // ========================================================
 cc_library_shared {
     name: "libupdate_engine_client",
-
     cflags: [
         "-Wall",
         "-Werror",
@@ -381,16 +423,9 @@ cc_library_shared {
         "-DUSE_BINDER=1",
     ],
     export_include_dirs: ["client_library/include"],
-    include_dirs: [
-        // TODO(deymo): Remove "external/cros/system_api/dbus" when dbus is not used.
-        "external/cros/system_api/dbus",
-        "system",
-    ],
-
     aidl: {
         local_include_dirs: ["binder_bindings"],
     },
-
     shared_libs: [
         "libchrome",
         "libbrillo",
@@ -398,7 +433,6 @@ cc_library_shared {
         "libbrillo-binder",
         "libutils",
     ],
-
     srcs: [
         "binder_bindings/android/brillo/IUpdateEngine.aidl",
         "binder_bindings/android/brillo/IUpdateEngineStatusCallback.aidl",
@@ -409,24 +443,107 @@ cc_library_shared {
     ],
 }
 
+// libupdate_engine_client_static (type: static_library)
+// ========================================================
+cc_library_static {
+    name: "libupdate_engine_client_static",
+    defaults: [
+        "ue_defaults",
+        "libupdate_engine_android_exports",
+        "libupdate_engine_boot_control_exports",
+    ],
+    export_include_dirs: ["client_library/include"],
+    aidl: {
+        local_include_dirs: ["binder_bindings"],
+        export_aidl_headers: true,
+    },
+    cflags: [
+        "-Wall",
+        "-Wextra",
+        "-Wno-unused-parameter",
+        "-Wno-unused-function",
+        "-Werror",
+        "-D_UE_SIDELOAD",
+        "-DUSE_BINDER=1",
+    ],
+    shared_libs: [
+        "libbinder",
+        "libbrillo-binder",
+    ],
+    static_libs: [
+        "libpayload_consumer",
+        "libupdate_engine_boot_control",
+        "update_metadata-protos",
+        "libselinux",
+        "libsetcpu",
+        "libcutils",
+        "libevent",
+        "libmodpb64",
+        "libgtest_prod",
+        "libprotobuf-cpp-lite",
+        "libbrillo-stream",
+        "libbrillo",
+        "libchrome",
+        "libutils",
+    ],
+    srcs: [
+        "binder_bindings/android/brillo/IUpdateEngine.aidl",
+        "binder_bindings/android/brillo/IUpdateEngineStatusCallback.aidl",
+        "client_library/client.cc",
+        "client_library/client_binder.cc",
+        "parcelable_update_engine_status.cc",
+        ":libupdate_engine_aidl",
+        "common/error_code_utils.cc",
+        "update_engine_client_android.cc",
+        "boot_control_android.cc",
+        "dynamic_partition_control_android.cc",
+        "binder_service_android.cc",
+        "certificate_checker.cc",
+        "daemon.cc",
+        "daemon_state_android.cc",
+        "hardware_android.cc",
+        "update_attempter_android.cc",
+        "update_boot_flags_action.cc",
+        "update_status_utils.cc",
+        "utils_android.cc",
+    ],
+    target: {
+        recovery: {
+            exclude_shared_libs: [
+                "libprotobuf-cpp-lite",
+                "libhwbinder",
+                "libbrillo-stream",
+                "libbrillo",
+                "libchrome",
+            ],
+        },
+    },
+
+}
+
+
 // update_engine_client (type: executable)
 // ========================================================
 // update_engine console client.
 cc_binary {
     name: "update_engine_client",
+    static_executable: true,
     defaults: ["ue_defaults"],
 
+    stl: "libc++_static", 
     // TODO(deymo): Remove external/cros/system_api/dbus once the strings are moved
     // out of the DBus interface.
-    include_dirs: ["external/cros/system_api/dbus"],
 
     shared_libs: [
         "libbinder",
+        "libhidlbase",
         "libbinderwrapper",
         "libbrillo-binder",
         "libutils",
     ],
-
+    static_libs: [
+        "libupdate_engine_client_static",
+    ],
     aidl: {
         local_include_dirs: ["binder_bindings"],
     },
@@ -435,7 +552,6 @@ cc_binary {
         ":libupdate_engine_aidl",
         "common/error_code_utils.cc",
         "update_engine_client_android.cc",
-        "update_status_utils.cc",
     ],
 }
 
@@ -456,6 +572,7 @@ cc_defaults {
         "libbsdiff",
         "libdivsufsort",
         "libdivsufsort64",
+        "libbrotli",
         "liblzma",
         "libpayload_consumer",
         "libpuffdiff",
@@ -464,6 +581,7 @@ cc_defaults {
     ],
     shared_libs: [
         "libbase",
+        "libutils",
         "libext2fs",
     ],
 }
@@ -735,5 +853,7 @@ filegroup {
     srcs: [
         "binder_bindings/android/brillo/IUpdateEngine.aidl",
         "binder_bindings/android/brillo/IUpdateEngineStatusCallback.aidl",
+        "binder_bindings/android/os/IUpdateEngine.aidl",
+        "binder_bindings/android/os/IUpdateEngineCallback.aidl",
     ],
 }
