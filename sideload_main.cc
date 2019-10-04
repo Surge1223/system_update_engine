@@ -100,6 +100,19 @@ class SideloadDaemonState : public DaemonStateInterface,
       ReportStatus(base::StringPrintf(
           "ui_print Step %d/3", status == UpdateStatus::VERIFYING ? 2 : 3));
       ReportStatus(base::StringPrintf("progress 0.6 0"));
+    }
+
+    if (status_ != status || fabs(progress - progress_) > 0.005) {
+      ReportStatus(base::StringPrintf("set_progress %.lf", progress));
+    }
+
+    if (status_ != status && (status == UpdateStatus::DOWNLOADING ||
+                              status == UpdateStatus::VERIFYING || status == UpdateStatus::FINALIZING)) {
+      // Split the progress bar in two parts for the two stages DOWNLOADING and
+      // FINALIZING.
+      ReportStatus(base::StringPrintf(
+          "ui_print Step %d/3", status == UpdateStatus::VERIFYING ? 2 : 3));
+      ReportStatus(base::StringPrintf("progress 0.6 0"));
      }
 
     if (status_ != status || fabs(progress - progress_) > 0.005) {
