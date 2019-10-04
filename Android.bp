@@ -52,12 +52,7 @@ cc_defaults {
         "-Wnon-virtual-dtor",
         "-fno-strict-aliasing",
     ],
-    include_dirs: [
-        "external/cros/system_api/dbus",
-        "system",
-        "external/selinux/libselinux/include",
-        "external/selinux/libsepol/include",
-    ],
+    include_dirs: ["system"],
     local_include_dirs: ["client_library/include"],
     static_libs: ["libgtest_prod"],
     shared_libs: [
@@ -136,7 +131,6 @@ cc_defaults {
         "libbase",
         "libcrypto",
         "libfec",
-        "libselinux",
     ],
 }
 
