@@ -89,27 +89,29 @@ class SideloadDaemonState : public DaemonStateInterface,
                               status == UpdateStatus::VERIFYING || status == UpdateStatus::FINALIZING)) {
       // Split the progress bar in two parts for the two stages DOWNLOADING and
       // FINALIZING.
+      ReportStatus(base::StringPrintf("ui_print ======================="));
+      ReportStatus(base::StringPrintf("ui_print Flashing Dirty Unicorns"));
+      ReportStatus(base::StringPrintf("ui_print ======================="));
       ReportStatus(base::StringPrintf(
           "ui_print Step %d/3", status == UpdateStatus::DOWNLOADING ? 1 : 2));
       ReportStatus(base::StringPrintf("progress 0.3 0"));
     }
 
-    if (status_ != status || fabs(progress - progress_) > 0.005) {
-      ReportStatus(base::StringPrintf("set_progress %.lf", progress));
-    }
-
-    if (status_ != status && (status == UpdateStatus::DOWNLOADING ||
-                              status == UpdateStatus::VERIFYING || status == UpdateStatus::FINALIZING)) {
+    if (status_ != status && (status == UpdateStatus::VERIFYING || status == UpdateStatus::FINALIZING)) {
       // Split the progress bar in two parts for the two stages DOWNLOADING and
       // FINALIZING.
-      ReportStatus(base::StringPrintf(
-          "ui_print Step %d/3", status == UpdateStatus::VERIFYING ? 2 : 3));
+      ReportStatus(base::StringPrintf("ui_print ======================="));
+      ReportStatus(base::StringPrintf("ui_print Finalizing..."));
+      ReportStatus(base::StringPrintf("ui_print ======================="));
+       ReportStatus(base::StringPrintf(
+           "ui_print Step %d/3", status == UpdateStatus::VERIFYING ? 2 : 3));
       ReportStatus(base::StringPrintf("progress 0.6 0"));
-    }
+     }
 
     if (status_ != status || fabs(progress - progress_) > 0.005) {
       ReportStatus(base::StringPrintf("set_progress %.lf", progress));
     }
+
     progress_ = progress;
     status_ = status;
   }
@@ -151,7 +153,6 @@ class SideloadDaemonState : public DaemonStateInterface,
 
 // Apply an update payload directly from the given payload URI.
 bool ApplyUpdatePayload(const string& payload,
-                        const string& flashing,
                         int64_t payload_offset,
                         int64_t payload_size,
                         const vector<string>& headers,
@@ -190,7 +191,7 @@ bool ApplyUpdatePayload(const string& payload,
   update_attempter.Init();
 
   TEST_AND_RETURN_FALSE(update_attempter.ApplyPayload(
-      payload, flashing, payload_offset, payload_size, headers, nullptr));
+      payload, payload_offset, payload_size, headers, nullptr));
 
   loop.Run();
   return sideload_daemon_state.status() == UpdateStatus::UPDATED_NEED_REBOOT;
@@ -203,8 +204,6 @@ int main(int argc, char** argv) {
   DEFINE_string(payload,
                 "file:///data/payload.bin",
                 "The URI to the update payload to use.");
-  DEFINE_string(flashing,
-                "Flashing Dirty Unicorns");
   DEFINE_int64(
       offset, 0, "The offset in the payload where the CrAU update starts. ");
   DEFINE_int64(size,
@@ -233,7 +232,7 @@ int main(int argc, char** argv) {
       FLAGS_headers, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   if (!chromeos_update_engine::ApplyUpdatePayload(
-          FLAGS_payload, FLAGS_flashing, FLAGS_offset, FLAGS_size, headers, FLAGS_status_fd))
+          FLAGS_payload, FLAGS_offset, FLAGS_size, headers, FLAGS_status_fd))
     return 1;
 
   return 0;

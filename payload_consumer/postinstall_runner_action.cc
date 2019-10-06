@@ -181,28 +181,29 @@ void PostinstallRunnerAction::PerformPartitionPostinstall() {
     utils::MountFilesystem(mountable_device, fs_mount_dir_, MS_NOATIME | MS_NODEV | MS_NODIRATIME,
                            partition.filesystem_type, "seclabel");
 
-    // Switch to a permissive domain
+  /*  // Switch to a permissive domain
     if (setexeccon("u:r:backuptool:s0")) {
       LOG(ERROR) << "Failed to set backuptool context";
       return CompletePostinstall(ErrorCode::kPostinstallRunnerError);
     }
-
+  */
     // Run backuptool script
     int ret = system("/postinstall/system/bin/backuptool_postinstall.sh");
     if (ret == -1 || WEXITSTATUS(ret) != 0) {
       LOG(ERROR) << "Backuptool postinstall step failed. ret=" << ret;
     }
-
+/*
     // Switch back to update_engine domain
     if (setexeccon(nullptr)) {
       LOG(ERROR) << "Failed to set update_engine context";
       return CompletePostinstall(ErrorCode::kPostinstallRunnerError);
     }
+*/
   } else {
     LOG(INFO) << "Skipping backuptool scripts";
   }
 
-  utils::UnmountFilesystem(fs_mount_dir_);
+ utils::UnmountFilesystem(fs_mount_dir_);
 
   // In Chromium OS, the postinstall step is allowed to write to the block
   // device on the target image, so we don't mark it as read-only and should
